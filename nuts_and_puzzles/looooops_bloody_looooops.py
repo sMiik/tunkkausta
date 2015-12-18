@@ -15,7 +15,7 @@ def print_matrix(numarray,row,col,direction):
             if direction == 'ver' and col == j and row == i+iter and iter < prod_count:
                 sys.stdout.write(('|%d|' % numarray[i][j]).center(6))
                 iter = iter+1
-            elif direction == 'hor' and row == i and col == i+iter and iter < prod_count:
+            elif direction == 'hor' and row == i and col == j+iter and iter < prod_count:
                 sys.stdout.write(('|%d|' % numarray[i][j]).center(6))
                 iter = iter+1
             elif direction == 'diag' and row == i+iter and col == j+iter and iter < prod_count:
