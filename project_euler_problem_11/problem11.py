@@ -2,7 +2,6 @@
 
 import sys
 import os
-import numpy as np
 import re
 import urllib2
 from enum import Enum
