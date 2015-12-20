@@ -37,47 +37,57 @@ def print_matrix(numarray,row,col,prod_count,d):
                 sys.stdout.write(('%d' % numarray[i][j]).zfill(2).center(6))
         print('')
 
-def calculate_products(numbers,product_count,d):
+def calculate_maximum(numbers,product_count,d):
     if product_count > len(numbers) or product_count > len(numbers[0]):
         sys.exit('Given item count is too large for given grid!\n' \
                  'Grid size (%d, %d) is less than given product count %d' \
                  % (len(numbers),len(numbers[0]),product_count))
     # Construct grid for products
     if d == Direction.horizontal:
-        products = [[1 for col in range(len(numbers[row])-product_count)] for row in range(len(numbers))]
+        rows = len(numbers)
+        cols = (len(numbers[0])-product_count+1)
     elif d == Direction.vertical:
-        products = [[1 for col in range(len(numbers[row]))] for row in range(len(numbers)-product_count)]
+        rows = (len(numbers)-product_count+1)
+        cols = len(numbers[0])
     else:
-        products = [[1 for col in range(len(numbers[row])-product_count)] for row in range(len(numbers)-product_count)]
+        rows = (len(numbers)-product_count+1)
+        cols = (len(numbers[0])-product_count+1)
 
     # Calculate the products
-    for i in range(len(products)):
-        for j in range(len(products[i])):
+    maximum = {
+        'value': 0,
+        'pos': {
+            'row': -1,
+            'col': -1
+        }
+    }
+    for i in range(rows):
+        for j in range(cols):
+            val = 1
             for k in range(product_count):
-                try:
-                    if d == Direction.horizontal:
-                        # For horizontal, product is counted from left to right
-                        products[i][j]*=numbers[i][j+k]
-                    elif d == Direction.vertical:
-                        # For vertical, product is counted from up to down
-                        products[i][j]*=numbers[i+k][j]
-                    elif d == Direction.diagonal:
-                        # For diagonal, product is counted from top left to bottom right
-                        products[i][j]*=numbers[i+k][j+k]
-                    elif d == Direction.reverse_diagonal:
-                        # For reverse diagonal, product is counted from bottom left to top right
-                        products[len(products)-i-1][j]*=numbers[len(products)-i-k-1][j+k]
-                except IndexError:
-                    if d == Direction.horizontal:
-                        print('Invalid index for horizontal calculations (%d, %d)' % (i+k,j))
-                    elif d == Direction.vertical:
-                        print('Invalid index for vertical calculations (%d, %d)' % (i+k,j))
-                    elif d == Direction.diagonal:
-                        print('Invalid index for diagonal calculations (%d, %d)' % (i+k,j+k))
-                    elif d == Direction.reverse_diagonal:
-                        print('Invalid index for reverse diagonal calculations (%d, %d)' % (len(products)-i-k-1,j+k))
-                    
-    return products
+                if d == Direction.horizontal:
+                    # For horizontal, product is counted from left to right
+                    val *= numbers[i][j+k]
+                elif d == Direction.vertical:
+                    # For vertical, product is counted from up to down
+                    val *= numbers[i+k][j]
+                elif d == Direction.diagonal:
+                    # For diagonal, product is counted from top left to bottom right
+                    val *= numbers[i+k][j+k]
+                elif d == Direction.reverse_diagonal:
+                    # For reverse diagonal, product is counted from bottom left to top right
+                    val *= numbers[len(numbers)-i-k-1][j+k]
+            if val > maximum['value']:
+                maximum['value'] = val
+                if d == Direction.reverse_diagonal:
+                    maximum['pos']['row'] = (len(numbers) - i - 1)
+                else:
+                    maximum['pos']['row'] = i
+                maximum['pos']['col'] = j
+
+    if maximum['pos']['row'] < 0 or maximum['pos']['col'] < 0:
+        sys.exit('Something went wrong and maximum value could not be found')
+    return maximum
 
 def validate_url(url):
     return re.compile(r'^https?:\/\/([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$',re.I).match(url) is not None
@@ -119,7 +129,7 @@ def main():
             product_count = int(sys.argv[2])
             if product_count > len(numbers) or product_count > len(numbers[0]):
                 sys.exit('Too large item count!\n' \
-                         'Value cannot be more than grid size')
+                         'Value cannot be more than either size of grid')
             if product_count <= 1:
                 sys.exit('Too low item count!\n' \
                          'Value must be over 1')
@@ -129,89 +139,40 @@ def main():
     # Cast all values to integers in a 2D array
     numbers = [map(int, row) for row in numbers]
 
-    # Construct grids for products
-    horizontal = calculate_products(numbers, product_count, Direction.horizontal)
-    vertical = calculate_products(numbers, product_count, Direction.vertical)
-    diagonal = calculate_products(numbers, product_count, Direction.diagonal)
-    reverse_diagonal = calculate_products(numbers, product_count, Direction.reverse_diagonal)
-
-    # Store maximals from each direction to variable
+    # Calculate maximum values
     try:
         maxs = {
-            Direction.horizontal:{
-                'value':np.amax(horizontal)
-            },
-            Direction.vertical:{
-                'value':np.amax(vertical)
-            },
-            Direction.diagonal:{
-                'value':np.amax(diagonal)
-            },
-            Direction.reverse_diagonal:{
-                'value':np.amax(reverse_diagonal)
-            }
+            Direction.horizontal: calculate_maximum(numbers, product_count, Direction.horizontal),
+            Direction.vertical: calculate_maximum(numbers, product_count, Direction.vertical),
+            Direction.diagonal: calculate_maximum(numbers, product_count, Direction.diagonal),
+            Direction.reverse_diagonal: calculate_maximum(numbers, product_count, Direction.reverse_diagonal)
         }
-    except ValueError: # product_count = len(numbers)
-        maxs = {
-            Direction.horizontal:{
-                'value':horizontal
-            },
-            Direction.vertical:{
-                'value':vertical
-            },
-            Direction.diagonal:{
-                'value':diagonal
-            },
-            Direction.reverse_diagonal:{
-                'value':reverse_diagonal
-            }
-        }
+    except:
+        sys.exit('Something went wrong while trying to calculate maximums')
+        
     # Get the indeces (row and column of grid) for maximums
     try:
-        maxs[Direction.horizontal]['index'] = np.where(horizontal == maxs[Direction.horizontal]['value'])
-        if len(maxs[Direction.horizontal]['index'][0]) > 1:
-            maxs[Direction.horizontal]['index'] = {
-                0: maxs[Direction.horizontal]['index'][0][0],
-                1: maxs[Direction.horizontal]['index'][1][0]
-            }
-        maxs[Direction.vertical]['index'] = np.where(vertical == maxs[Direction.vertical]['value'])
-        if len(maxs[Direction.vertical]['index'][0]) > 1:
-            maxs[Direction.vertical]['index'] = {
-                0: maxs[Direction.vertical]['index'][0][0],
-                1: maxs[Direction.vertical]['index'][1][0]
-            }
-        maxs[Direction.diagonal]['index'] = np.where(diagonal == maxs[Direction.diagonal]['value'])
-        if len(maxs[Direction.diagonal]['index'][0]) > 1:
-            maxs[Direction.diagonal]['index'] = {
-                0: maxs[Direction.diagonal]['index'][0][0],
-                1: maxs[Direction.diagonal]['index'][1][0]
-            }
-        maxs[Direction.reverse_diagonal]['index'] = np.where(reverse_diagonal == maxs[Direction.reverse_diagonal]['value'])
-        if len(maxs[Direction.reverse_diagonal]['index'][0]) > 1:
-            maxs[Direction.reverse_diagonal]['index'] = {
-                0: maxs[Direction.reverse_diagonal]['index'][0][0],
-                1: maxs[Direction.reverse_diagonal]['index'][1][0]
-            }
         # Print the maximum values for each
         print('Maximal products of each direction:')
-        print('Horizontally: %d starting from (%d, %d) towards right' % \
-             (maxs[Direction.horizontal]['value'], maxs[Direction.horizontal]['index'][0], maxs[Direction.horizontal]['index'][1]))
-        print('Vertically: %d starting from (%d, %d) towards down' % \
-             (maxs[Direction.vertical]['value'], maxs[Direction.vertical]['index'][0], maxs[Direction.vertical]['index'][1]))
-        print('Diagonally: %d starting from (%d, %d) towards bottom right' % \
-             (maxs[Direction.diagonal]['value'], maxs[Direction.diagonal]['index'][0], maxs[Direction.diagonal]['index'][1]))
-        print('Reverse diagonally: %d starting from (%d, %d) towards upper right' % \
-             (maxs[Direction.reverse_diagonal]['value'], maxs[Direction.reverse_diagonal]['index'][0], maxs[Direction.reverse_diagonal]['index'][1]))
+        print('Horizontally: %d starting from %d. rows %d.column towards right' % (maxs[Direction.horizontal]['value'], \
+             (maxs[Direction.horizontal]['pos']['row']+1), (maxs[Direction.horizontal]['pos']['col']+1)))
+        print('Vertically: %d starting from %d. rows %d. column towards down' % (maxs[Direction.vertical]['value'], \
+             (maxs[Direction.vertical]['pos']['row']+1), (maxs[Direction.vertical]['pos']['col'])+1))
+        print('Diagonally: %d starting from %d. rows %d. column towards bottom right' % (maxs[Direction.diagonal]['value'], \
+             (maxs[Direction.diagonal]['pos']['row']+1), (maxs[Direction.diagonal]['pos']['col']+1)))
+        print('Reverse diagonally: %d starting from %d. rows %d. column towards upper right' % (maxs[Direction.reverse_diagonal]['value'], \
+             (maxs[Direction.reverse_diagonal]['pos']['row']+1), (maxs[Direction.reverse_diagonal]['pos']['col']+1)))
     except IndexError:
         sys.exit('Error finding maximum values!\n' \
                  'Try with smaller grid and/or item count')
     # Flip the objects to get the maximum (pure if stuff's kinda boring)
     flip = [(obj['value'], d) for (d, obj) in maxs.items()]
-    [highest,direction] = max(flip)
-    print('Maximum is: %d starting from (%d,%d) %s' % (highest,maxs[direction]['index'][0],maxs[direction]['index'][1],str(direction)))
+    [highest, direction] = max(flip)
+    print('Maximum is: %d starting from %d. rows %d. column %s' % \
+         (highest, (maxs[direction]['pos']['row']+1),(maxs[direction]['pos']['col']+1),str(direction)))
 
     # Print the original numbers grid visualizing the maximum values
-    print_matrix(numbers, maxs[direction]['index'][0], maxs[direction]['index'][1], product_count, direction)
+    print_matrix(numbers, maxs[direction]['pos']['row'], maxs[direction]['pos']['col'], product_count, direction)
 
 if __name__ == "__main__":
     main()
