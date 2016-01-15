@@ -91,7 +91,7 @@ def calculate_maximum(numbers,product_count,d):
 def validate_url(url):
     return re.compile(r'^https?:\/\/([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$',re.I).match(url) is not None
 
-# Everything that really matters in single main function while that's the way drunk people do it
+
 def main():
     # Get numbers from file or show error
     if len(sys.argv) > 1 and not os.path.isfile(sys.argv[1]):
